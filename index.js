@@ -137,6 +137,21 @@ class EIMBlocks {
           }
         },
         {
+          opcode: "broadcastMessageAndWait_reporter",
+          blockType: BlockType.REPORTER,
+          text: formatMessage({
+            id: "eim.sendMessageAndWait",
+            default: "broadcast [content] and wait",
+            description: "broadcast message to codelab-adapter and wait"
+          }),
+          arguments: {
+            content: {
+              type: ArgumentType.STRING,
+              defaultValue: "print('hello')"
+            }
+          }
+        },
+        {
           opcode: "control_extension",
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -258,6 +273,14 @@ class EIMBlocks {
     return this.emit_with_messageid(EXTENSION_ID, content);
 
   }
+
+  broadcastMessageAndWait_reporter(args) {
+    const content = args.content;
+    //this.socket.emit("actuator", { topic: TOPIC, payload: message });
+    return this.emit_with_messageid(EXTENSION_ID, content);
+
+  }
+  
 
   // wait/not wait
 

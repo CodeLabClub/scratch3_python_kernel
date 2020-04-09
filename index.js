@@ -1,6 +1,7 @@
 const ArgumentType = require("../../extension-support/argument-type");
 const BlockType = require("../../extension-support/block-type");
 const formatMessage = require("format-message");
+const RateLimiter = require('../../util/rateLimiter.js');
 const io = require("socket.io-client"); // yarn add socket.io-client socket.io-client@2.2.0
 /**
  * Icon svg to be displayed at the left edge of each extension block, encoded as a data URI.
@@ -20,6 +21,7 @@ const EXTENSION_STATU_CHANGE_TOPIC = "core/extension/statu/change"
 const NOTIFICATION_TOPIC = "core/notification";
 
 const EXTENSION_ID = "eim/python";
+const HELP_URL = "https://adapter.codelab.club/extension_guide/extension_python_kernel/";
 
 
 // EIM: Everything Is Message
@@ -31,6 +33,8 @@ class EIMBlocks {
      */
     this._requestID = 0;
     this._promiseResolves = {};
+    const SendRateMax = 10;
+    this._rateLimiter = new RateLimiter(SendRateMax);
     this.runtime = runtime;
 
     const url = new URL(window.location.href);
@@ -82,6 +86,18 @@ class EIMBlocks {
       blockIconURI: blockIconURI,
       blocks: [
         {
+          opcode: "open_help_url",
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+              id: "eim.open_help_url",
+              default: "help",
+              description:
+                  "open help url",
+          }),
+          arguments: {
+          },
+        },
+        {
           opcode: "whenMessageReceive",
           blockType: BlockType.HAT,
           text: formatMessage({
@@ -92,7 +108,7 @@ class EIMBlocks {
           arguments: {
             content: {
               type: ArgumentType.STRING,
-              defaultValue: "hello"
+              defaultValue: "3"
             }
           }
         },
@@ -107,21 +123,6 @@ class EIMBlocks {
           arguments: {}
         },
         {
-          opcode: "broadcastMessage",
-          blockType: BlockType.COMMAND,
-          text: formatMessage({
-            id: "eim.sendMessage",
-            default: "broadcast [content]",
-            description: "broadcast message to codelab-adapter"
-          }),
-          arguments: {
-            content: {
-              type: ArgumentType.STRING,
-              defaultValue: "print('hello')"
-            }
-          }
-        },
-        {
           opcode: "broadcastMessageAndWait",
           blockType: BlockType.COMMAND,
           text: formatMessage({
@@ -132,7 +133,22 @@ class EIMBlocks {
           arguments: {
             content: {
               type: ArgumentType.STRING,
-              defaultValue: "print('hello')"
+              defaultValue: "1+2"
+            }
+          }
+        },
+        {
+          opcode: "broadcastMessage",
+          blockType: BlockType.COMMAND,
+          text: formatMessage({
+            id: "eim.sendMessage",
+            default: "broadcast [content]",
+            description: "broadcast message to codelab-adapter"
+          }),
+          arguments: {
+            content: {
+              type: ArgumentType.STRING,
+              defaultValue: "1+2"
             }
           }
         },
@@ -147,7 +163,7 @@ class EIMBlocks {
           arguments: {
             content: {
               type: ArgumentType.STRING,
-              defaultValue: "print('hello')"
+              defaultValue: "1+2"
             }
           }
         },
@@ -178,16 +194,7 @@ class EIMBlocks {
         extensions_name: {
           acceptReporters: true,
           items: [
-            "extension_eim",
             "extension_python_kernel",
-            "extension_tello",
-            "extension_usb_microbit",
-            "extension_wechat",
-            "extension_cozmo",
-            "extension_vector",
-            "extension_eim_monitor",
-            "extension_eim_script"
-            // "extension_raspberrypi"
           ]
         },
         turn: {
@@ -246,7 +253,7 @@ class EIMBlocks {
   // when receive
   whenMessageReceive(args) {
     const content = args.content;
-    if (content === this.content) {
+    if (this.content && content === this.content) {
       this.content = null; // 每次清空
       return true;
     }
@@ -281,19 +288,30 @@ class EIMBlocks {
 
   }
   
+  emit_with_messageid_for_control(extension_id, content, extension_name) {
+    if (!this._rateLimiter.okayToSend()) return Promise.resolve();
 
-  // wait/not wait
+    const messageID = this._requestID++;
+    const payload = {};
+    payload.extension_id = extension_id;
+    payload.content = content;
+    payload.message_id = messageID;
+    payload.extension_name=extension_name;
+    this.socket.emit("actuator", {
+        payload: payload,
+        topic: EXTENSIONS_OPERATE_TOPIC,
+    });
+    return this.get_reply_message(messageID);
+}
 
   control_extension(args) {
-    const turn = args.turn;
+    const content = args.turn;
     const extension_name = args.extension_name;
-    const message = {
-      topic: EXTENSIONS_OPERATE_TOPIC,
-      // type: "web/extension_control",
-      payload: {content: turn, extension_name: extension_name}
-    };
-    this.socket.emit("actuator", message);
-    return;
+    return this.emit_with_messageid_for_control(EXTENSION_ID, content,extension_name);
+  }
+
+  open_help_url(args){
+    window.open(HELP_URL);
   }
 
 }

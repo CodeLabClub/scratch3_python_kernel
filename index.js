@@ -63,7 +63,8 @@ class AdapterClient {
                 // 只接收当前插件消息
                 // ExtensionManager 恢复关于插件的控制信息
                 window.message = msg;
-                this.adapter_node_content = msg.message.payload.content;
+                this.adapter_node_content_hat = msg.message.payload.content; 
+                this.adapter_node_content_reporter = msg.message.payload.content;
                 console.log(
                     `${this.NODE_ID} message->`,
                     msg.message.payload.content
@@ -137,10 +138,12 @@ class AdapterClient {
     whenMessageReceive(content) {
         //rename bool func
         if (
-            this.adapter_node_content &&
-            content === this.adapter_node_content
+            this.adapter_node_content_hat&&
+            content === this.adapter_node_content_hat
         ) {
-            this.adapter_node_content = null; // 每次清空
+            setTimeout(() => {
+                this.adapter_node_content_hat = null; // 每次清空
+            }, 10); //ms // 每次清空
             return true;
         }
     }
@@ -307,7 +310,7 @@ class PythonBlocks {
     }
 
     getComingMessage() {
-        return this.adapter_client.adapter_node_content;
+        return this.adapter_client.adapter_node_content_reporter;
     }
 
     // broadcast message

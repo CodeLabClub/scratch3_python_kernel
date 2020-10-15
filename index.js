@@ -1,8 +1,9 @@
 const ArgumentType = require("../../extension-support/argument-type");
 const BlockType = require("../../extension-support/block-type");
 const formatMessage = require("format-message");
-const RateLimiter = require("../../util/rateLimiter.js");
-const io = require("socket.io-client"); // yarn add socket.io-client socket.io-client@2.2.0
+//const RateLimiter = require("../../util/rateLimiter.js");
+//const io = require("socket.io-client"); // yarn add socket.io-client socket.io-client@2.2.0
+const AdapterBaseClient = require("../scratch3_eim/codelab_adapter_base.js");
 
 // 翻译
 const FormHelp = {
@@ -53,138 +54,62 @@ const NODE_ID = "eim/extension_python";
 const HELP_URL =
     "https://adapter.codelab.club/extension_guide/extension_python_kernel/";
 
-class AdapterClient {
+
+class Client {
+    onAdapterPluginMessage(msg) {
+        this.node_id = msg.message.payload.node_id;
+        if (
+            this.node_id === this.NODE_ID ||
+            this.node_id === "ExtensionManager"
+        ) {
+            // todo 响应插件关闭消息， 从terminate关闭，可以自关闭
+            this.adapter_node_content_hat = msg.message.payload.content;
+            this.adapter_node_content_reporter = msg.message.payload.content;
+            if(this.adapter_node_content_reporter && this.adapter_node_content_reporter.addresses){
+                this.addresses = this.adapter_node_content_reporter.addresses;
+            }
+        }
+    }
+
+    notify_callback(msg) {
+        // 使用通知机制直到自己退出
+        if (msg.message === `${this.NODE_ID} stopped`){
+            console.warn(`${this.NODE_ID} stopped`);
+        }
+    }
+
+
     constructor(node_id, help_url) {
-        // console.log(`${NODE_ID} init AdapterClient`)
-        const ADAPTER_TOPIC = "adapter/nodes/data";
-        const EXTS_OPERATE_TOPIC = "core/exts/operate";
-        const NODES_OPERATE_TOPIC = "core/nodes/operate";
-        this.SCRATCH_TOPIC = "scratch/extensions/command";
         this.NODE_ID = node_id;
         this.HELP_URL = help_url;
-        this.plugin_topic_map = {
-            node: NODES_OPERATE_TOPIC,
-            extension: EXTS_OPERATE_TOPIC,
-        };
 
-        this._requestID = 0;
-        this._promiseResolves = {};
-        const SendRateMax = 10;
-        this._rateLimiter = new RateLimiter(SendRateMax);
-
-        const url = new URL(window.location.href);
-        var adapterHost = url.searchParams.get("adapter_host"); // 支持树莓派(分布式使用)
-        if (!adapterHost) {
-            var adapterHost = window.__static
-                ? "127.0.0.1"
-                : "codelab-adapter.codelab.club";
-        }
-        // console.log(`${this.NODE_ID} ready to connect adapter...`)
-        this.socket = io(
-            `${window.__static ? "https:" : ""}//${adapterHost}:12358` +
-                "/test",
-            {
-                transports: ["websocket"],
-            }
+        this.adapter_base_client = new AdapterBaseClient(
+            null, // onConnect,
+            null, // onDisconnect,
+            null, // onMessage,
+            this.onAdapterPluginMessage.bind(this), // onAdapterPluginMessage,
+            null, // update_nodes_status,
+            null, // node_statu_change_callback,
+            this.notify_callback.bind(this), // notify_callback,
+            null, // error_message_callback,
+            null, // update_adapter_status
+            100 // SendRateMax = 60 default
         );
-
-        this.socket.on("sensor", (msg) => {
-            this.topic = msg.message.topic;
-            this.node_id = msg.message.payload.node_id;
-            const message_id = msg.message.payload.message_id;
-            if (
-                this.topic === ADAPTER_TOPIC &&
-                (this.node_id === this.NODE_ID ||
-                    this.node_id === "ExtensionManager")
-            ) {
-                // 只接收当前插件消息
-                // ExtensionManager 恢复关于插件的控制信息
-                window.message = msg;
-                this.adapter_node_content_hat = msg.message.payload.content; 
-                this.adapter_node_content_reporter = msg.message.payload.content;
-                console.log(
-                    `${this.NODE_ID} message->`,
-                    msg.message.payload.content
-                );
-                // 处理对应id的resolve
-                if (typeof message_id !== "undefined") {
-                    this._promiseResolves[message_id] &&
-                        this._promiseResolves[message_id](
-                            msg.message.payload.content
-                        );
-                }
-            }
-        });
     }
 
-    get_reply_message(messageID) {
-        const timeout = 5000; // ms 交给用户选择
-        return new Promise((resolve, reject) => {
-            this._promiseResolves[messageID] = resolve; // 抛到外部
-            setTimeout(() => {
-                reject(`timeout(${timeout}ms)`);
-            }, timeout);
-        });
-    }
-
-    emit_with_messageid(node_id, content) {
-        // payload is dict
-        //messageID: messageID
-        /*
-    if (typeof payload !== 'object'){
-      console.error('payload should be object');
-    }*/
-        const messageID = this._requestID++;
-        const payload = {};
-        payload.node_id = node_id;
-        payload.content = content;
-        payload.message_id = messageID;
-        this.socket.emit("actuator", {
-            payload: payload,
-            topic: this.SCRATCH_TOPIC,
-        });
-        return this.get_reply_message(messageID);
-    }
-
-    emit_without_messageid(node_id, content) {
-        const payload = {};
-        payload.node_id = node_id;
-        payload.content = content;
-        this.socket.emit("actuator", {
-            payload: payload,
-            topic: this.SCRATCH_TOPIC,
-        });
-    }
-
-    emit_with_messageid_for_control(node_id, content, node_name, pluginType) {
-        if (!this._rateLimiter.okayToSend()) return Promise.resolve();
-
-        const messageID = this._requestID++;
-        const payload = {};
-        payload.node_id = node_id;
-        payload.content = content;
-        payload.message_id = messageID;
-        payload.node_name = node_name;
-        this.socket.emit("actuator", {
-            payload: payload,
-            topic: this.plugin_topic_map[pluginType],
-        });
-        return this.get_reply_message(messageID);
-    }
-
-    whenMessageReceive(content) {
-        //rename bool func
+    isTargetTopicMessage(targetContent) {
         if (
-            this.adapter_node_content_hat&&
-            content === this.adapter_node_content_hat
+            // targetContent === "_any"
+            (targetContent === this.adapter_node_content_hat || targetContent === "_any") &&
+            this.NODE_ID === this.node_id
         ) {
             setTimeout(() => {
                 this.adapter_node_content_hat = null; // 每次清空
-            }, 1); //ms // 每次清空
+                this.node_id = null;
+            }, 1); //ms
             return true;
         }
     }
-
 }
 
 // EIM: Everything Is Message
@@ -194,7 +119,7 @@ class PythonBlocks {
          * The runtime instantiating this block package.
          * @type {Runtime}
          */
-        this.adapter_client = new AdapterClient(NODE_ID, HELP_URL);
+        this.adapter_client = new Client(NODE_ID, HELP_URL);
     }
 
     /**
@@ -331,7 +256,7 @@ class PythonBlocks {
     // 清空的方案不好（意味着获取消息和when不能混用），如果使用last message，也有问题，一样的消息将不触发
     whenMessageReceive(args) {
         const content = args.content;
-        return this.adapter_client.whenMessageReceive(content);
+        return this.adapter_client.isTargetTopicMessage(content);
     }
 
     getComingMessage() {
@@ -343,7 +268,7 @@ class PythonBlocks {
     broadcastMessage(args) {
         const content = args.content;
         //this.socket.emit("actuator", { topic: TOPIC, payload: message });
-        this.adapter_client.emit_without_messageid(
+        this.adapter_client.adapter_base_client.emit_without_messageid(
             this.adapter_client.NODE_ID,
             content
         );
@@ -353,7 +278,7 @@ class PythonBlocks {
     broadcastMessageAndWait(args) {
         const content = args.content;
         //this.socket.emit("actuator", { topic: TOPIC, payload: message });
-        return this.adapter_client.emit_with_messageid(
+        return this.adapter_client.adapter_base_client.emit_with_messageid(
             this.adapter_client.NODE_ID,
             content
         );
@@ -362,7 +287,7 @@ class PythonBlocks {
     broadcastMessageAndWait_reporter(args) {
         const content = args.content;
         //this.socket.emit("actuator", { topic: TOPIC, payload: message });
-        return this.adapter_client.emit_with_messageid(
+        return this.adapter_client.adapter_base_client.emit_with_messageid(
             this.adapter_client.NODE_ID,
             content
         );
@@ -371,7 +296,7 @@ class PythonBlocks {
     control_extension(args) {
         const content = args.turn;
         const ext_name = args.ext_name;
-        return this.adapter_client.emit_with_messageid_for_control(
+        return this.adapter_client.adapter_base_client.emit_with_messageid_for_control(
             this.adapter_client.NODE_ID,
             content,
             ext_name,

@@ -79,7 +79,7 @@ class Client {
     }
 
 
-    constructor(node_id, help_url) {
+    constructor(node_id, help_url, runtime) {
         this.NODE_ID = node_id;
         this.HELP_URL = help_url;
 
@@ -93,7 +93,8 @@ class Client {
             this.notify_callback.bind(this), // notify_callback,
             null, // error_message_callback,
             null, // update_adapter_status
-            100 // SendRateMax = 60 default
+            100, // SendRateMax = 60 default
+            runtime
         );
     }
 
@@ -119,7 +120,7 @@ class PythonBlocks {
          * The runtime instantiating this block package.
          * @type {Runtime}
          */
-        this.adapter_client = new Client(NODE_ID, HELP_URL);
+        this.adapter_client = new Client(NODE_ID, HELP_URL, runtime);
     }
 
     /**

@@ -47,7 +47,7 @@ const Form_broadcastMessageAndWait_REPORTER = {
  */
 // eslint-disable-next-line max-len
 // import blockIconURI from './icon_logo.png';
-const blockIconURI = require('./icon_logo.png');
+const blockIconURI = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAyNC4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDApICAtLT4NCjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0i5Zu+5bGCXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4Ig0KCSB2aWV3Qm94PSIwIDAgNDAgNDAiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDQwIDQwOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8c3R5bGUgdHlwZT0idGV4dC9jc3MiPg0KCS5zdDB7ZmlsbDojRkZGRkZGO30NCgkuc3Qxe2ZpbGw6IzIwNDg5NTt9DQoJLnN0MntmaWxsOiNGQ0Q1NjU7fQ0KPC9zdHlsZT4NCjx0aXRsZT7mianlsZXmj5Lku7bphY3lm77orr7orqE8L3RpdGxlPg0KPGcgaWQ9Il8zLl9QeXRob24iPg0KCTxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0xNS42LDYuODJjLTAuNzIsMC0xLjM1LDAuNjMtMS4zNSwxLjM1YzAsMC42MywwLjQ3LDEuMTksMS4xOSwxLjI3aDAuMDhjMC43MiwwLDEuMzUtMC42MywxLjM1LTEuMzUNCgkJYzAtMC42My0wLjQ3LTEuMTktMS4xMS0xLjI3QzE1LjY3LDYuODIsMTUuNjcsNi44MiwxNS42LDYuODJ6Ii8+DQoJPHBhdGggY2xhc3M9InN0MSIgZD0iTTE5LjI0LDE5LjI4aDMuNzNjMi4wNiwwLDMuNzMtMS42NiwzLjczLTMuNzNWOC4wMWMtMC42My01LTE0LjIxLTQuMi0xNC4yMS0wLjQ3djMuNjZoNy4xNHYxLjU5SDkuMzINCgkJYy02LjExLDAuMjQtNS43MiwxNC4yOSwwLDE0LjI5aDIuMzFDMTEuMjIsMTkuMTMsMTIuOTcsMTkuMjgsMTkuMjQsMTkuMjh6IE0xNS41MSw5LjM2Yy0wLjYzLDAtMS4xOS0wLjQ3LTEuMjctMS4xOVY4LjA5DQoJCWMwLTAuNzIsMC42My0xLjM1LDEuMzUtMS4zNWMwLjYzLDAsMS4xOSwwLjQ3LDEuMjcsMS4xMWMwLDAuMDgsMCwwLjA4LDAsMC4xNkMxNi45NCw4LjgsMTYuMzEsOS4zNiwxNS41MSw5LjM2TDE1LjUxLDkuMzZ6Ii8+DQoJPHBhdGggY2xhc3M9InN0MiIgZD0iTTIwLjY3LDIwLjcyaC0zLjczYy0yLjA2LDAtMy43MywxLjY2LTMuNzMsMy43M3Y3LjU0YzAuNjMsNSwxNC4yMSw0LjIsMTQuMjEsMC40N3YtMy42NmgtNy4xNHYtMS41OWgxMC40DQoJCWM2LjExLTAuMjQsNS43Mi0xNC4yOSwwLTE0LjI5aC0yLjMxQzI4LjY5LDIwLjg3LDI2Ljk0LDIwLjcyLDIwLjY3LDIwLjcyeiBNMjQuNCwzMC42NGMwLjYzLDAsMS4xOSwwLjQ3LDEuMjcsMS4xOXYwLjA4DQoJCWMwLDAuNzItMC42MywxLjM1LTEuMzUsMS4zNWMtMC42MywwLTEuMTktMC40Ny0xLjI3LTEuMTFjMC0wLjA4LDAtMC4wOCwwLTAuMTZDMjIuOTgsMzEuMiwyMy42MSwzMC42NCwyNC40LDMwLjY0eiIvPg0KPC9nPg0KPC9zdmc+DQo=';
 const menuIconURI = blockIconURI;
 
 const NODE_ID = "eim/extension_python";
@@ -73,8 +73,8 @@ class Client {
 
     notify_callback(msg) {
         // 使用通知机制直到自己退出
-        if (msg.message === `${this.NODE_ID} stopped`){
-            console.warn(`${this.NODE_ID} stopped`);
+        if (msg.message === `停止 ${this.NODE_ID}`){
+            console.warn(`停止 ${this.NODE_ID}`);
         }
     }
 
@@ -154,7 +154,7 @@ class PythonBlocks {
         let the_locale = this._setLocale();
         return {
             id: "python",
-            name: "Python Kernel",
+            name: "Python",
             menuIconURI: menuIconURI,
             blockIconURI: blockIconURI,
             blocks: [
